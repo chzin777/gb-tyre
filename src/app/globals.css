@@ -1,26 +1,403 @@
 @import "tailwindcss";
 
+/*
+  GB Tyre Services - design tokens.
+
+  Palette is drawn from the subject: cool carbon-grey rubber and wet Edinburgh
+  tarmac for the ground, safety orange (the brand's existing accent) for anything
+  that asks the visitor to act. One accent, locked, used identically everywhere.
+*/
+
+@theme {
+  --color-asphalt: #101319;
+  --color-asphalt-2: #161a22;
+  --color-rubber: #1c212b;
+  --color-carbon: #272e3a;
+  --color-carbon-2: #38414f;
+  --color-chalk: #eef1f4;
+  --color-slate-soft: #98a2b0;
+  --color-slate-dim: #6c7684;
+  --color-hazard: #f97316;
+  --color-hazard-deep: #c2530a;
+  --color-hazard-soft: #ffb27a;
+
+  --font-display: var(--font-archivo), "Archivo", system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-panel: 20px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  /* Layer order, declared once so no component invents its own z-index. */
+  --z-page: 1;
+  --z-sticky: 40;
+  --z-nav: 50;
+  --z-grain: 60;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  /*
+    Default border colour. It has to live inside `base`: unlayered rules outrank
+    every layered one, so declaring this at the top level would beat Tailwind's
+    own `border-transparent` and `border-hazard` utilities everywhere.
+  */
+  * {
+    border-color: var(--color-carbon);
   }
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-asphalt);
+  color: var(--color-chalk);
+  font-family: var(--font-sans);
+  /* `clip` and not `hidden`: `hidden` turns the body into a scroll container and
+     silently breaks every `position: sticky` and pinned section on the page. */
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-hazard);
+  color: #101319;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-hazard);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Tread field. A repeating tyre-tread block pattern used as the page's ambient
+   texture instead of a gradient blob. Pure CSS so it costs no request.
+--------------------------------------------------------------------------- */
+
+.tread-field {
+  /* One direction only. The crossed version read as a diamond lattice, which is
+     upholstery, not tread. */
+  background-image: repeating-linear-gradient(
+    108deg,
+    rgba(255, 255, 255, 0.022) 0px,
+    rgba(255, 255, 255, 0.022) 2px,
+    transparent 2px,
+    transparent 22px
+  );
+}
+
+.tread-band {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(249, 115, 22, 0.5) 0px,
+    rgba(249, 115, 22, 0.5) 10px,
+    transparent 10px,
+    transparent 24px
+  );
+}
+
+/* Fine film grain. Fixed and pointer-events:none so it never repaints on scroll. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: var(--z-grain);
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* ---------------------------------------------------------------------------
+   Hero aperture. `--aperture` runs 1 (slot) to 0 (wide open) and is driven from
+   the hero's scroll progress. It goes through a custom property rather than an
+   inline `clip-path` string because Motion does not write clip-path to the
+   element's own style, which leaves the shape stuck at its first value.
+--------------------------------------------------------------------------- */
+
+/*
+  Scroll-driven opacity. Motion writes transforms to the element's own style but
+  routes plain `opacity` somewhere the scroll position cannot reach reliably, so
+  anything tied to scroll progress goes through this variable instead.
+*/
+.mv-opacity {
+  opacity: var(--mv-opacity, 1);
+}
+
+.aperture {
+  /*
+    Closed, the window is a 340px wide slot 62vh tall in the middle of the
+    screen; open, it is the whole hero. Mixing px into the inset keeps the slot
+    a sensible width on a phone, where a percentage would pinch it shut.
+  */
+  clip-path: inset(
+    calc(var(--aperture, 1) * (50% - 31vh))
+      calc(var(--aperture, 1) * max(19%, 50% - 170px)) round
+      calc(var(--aperture, 1) * 24px)
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Marquee. One per page, on the brand strip.
+--------------------------------------------------------------------------- */
+
+@keyframes drift {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.marquee-track {
+  animation: drift 42s linear infinite;
+  will-change: transform;
+}
+
+.marquee-mask {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 9%,
+    #000 91%,
+    transparent
+  );
+}
+
+/* Slow rotation for the sidewall diagram, tied to nothing but ambience. */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-slow {
+  animation: spin-slow 28s linear infinite;
+}
+
+/* Idle breathing on the open/closed indicator only. Real semantic state. */
+@keyframes beacon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 7px rgba(249, 115, 22, 0);
+  }
+}
+
+.beacon {
+  animation: beacon 2.4s var(--ease-out-expo) infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Magic bento. An asymmetric grid whose cards light up as the cursor comes
+   near. The glow colour is the page accent, driven by --glow-* variables the
+   component writes per card on pointer move.
+--------------------------------------------------------------------------- */
+
+.bento-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* Twelve cells across four columns and three rows, filled exactly. */
+  .bento-grid > *:nth-child(3) {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .bento-grid > *:nth-child(4) {
+    grid-column: 1 / span 2;
+    grid-row: 2 / span 2;
+  }
+  .bento-grid > *:nth-child(6) {
+    grid-column: 4;
+    grid-row: 3;
+  }
+}
+
+.bento-card {
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-intensity: 0;
+  --glow-radius: 400px;
+}
+
+.bento-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: radial-gradient(
+    var(--glow-radius) circle at var(--glow-x) var(--glow-y),
+    rgba(249, 115, 22, calc(var(--glow-intensity) * 0.9)) 0%,
+    rgba(249, 115, 22, calc(var(--glow-intensity) * 0.4)) 30%,
+    transparent 60%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bento-card:hover {
+  box-shadow:
+    0 18px 40px -24px rgba(0, 0, 0, 0.9),
+    0 0 30px -6px rgba(249, 115, 22, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bento-card::after {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Selects. The dropdown of a plain <select> is drawn by the operating system,
+   so it arrives square with a blue highlight no matter what the page says. The
+   two rules below are the best a legacy select allows; everything under the
+   feature query is the real styling, which browsers supporting the customisable
+   select opt into. Anywhere else the native picker is used, which is the right
+   control on a phone anyway.
+--------------------------------------------------------------------------- */
+
+select option {
+  background: var(--color-asphalt-2);
+  color: var(--color-chalk);
+}
+
+@supports (appearance: base-select) {
+  .tyre-select,
+  .tyre-select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* The page draws its own caret, so the built-in one is redundant. */
+  .tyre-select::picker-icon {
+    display: none;
+  }
+
+  .tyre-select::picker(select) {
+    /* Preferred placement is under the field. Chrome still anchors the list on
+       the selected row where it fits, which is its own behaviour, not a bug
+       here. */
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block;
+    margin-block-start: 8px;
+    min-width: 6rem;
+    min-width: anchor-size(width);
+    border: 1px solid var(--color-carbon);
+    border-radius: 18px;
+    background: var(--color-asphalt-2);
+    padding: 6px;
+    box-shadow: 0 26px 60px -26px rgb(0 0 0 / 0.95);
+    max-height: 288px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-carbon-2) transparent;
+    opacity: 0;
+    translate: 0 -6px;
+    transition:
+      opacity 0.18s var(--ease-out-expo),
+      translate 0.18s var(--ease-out-expo),
+      overlay 0.18s allow-discrete,
+      display 0.18s allow-discrete;
+  }
+
+  .tyre-select:open::picker(select) {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  @starting-style {
+    .tyre-select:open::picker(select) {
+      opacity: 0;
+      translate: 0 -6px;
+    }
+  }
+
+  .tyre-select option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0.75rem;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--color-slate-soft);
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .tyre-select option::checkmark {
+    display: none;
+  }
+
+  .tyre-select option:hover,
+  .tyre-select option:focus {
+    background: var(--color-rubber);
+    color: var(--color-chalk);
+    outline: none;
+  }
+
+  .tyre-select option:checked {
+    background: var(--color-hazard);
+    color: var(--color-asphalt);
+    font-weight: 700;
+  }
+}
+
+/* Hide scrollbars on the horizontal snap rails without killing keyboard scroll. */
+.rail {
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .marquee-track,
+  .spin-slow,
+  .beacon {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
