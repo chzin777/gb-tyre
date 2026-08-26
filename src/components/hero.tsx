@@ -54,13 +54,18 @@ export function Hero() {
           className="absolute inset-x-0 -top-[12%] h-[124%]"
           style={{ y: still ? "0%" : treadShift }}
         >
+          {/*
+            The blur, grayscale and contrast are baked into this file. Running
+            them as CSS filters on a full-screen image cost about half the frame
+            budget while the hero was scrolling.
+          */}
           <Image
-            src="/img/tread-macro.png"
+            src="/img/tread-blur.jpg"
             alt=""
             fill
             priority
             sizes="100vw"
-            className="scale-125 object-cover opacity-[0.15] blur-[3px] grayscale-[0.9] contrast-[1.25]"
+            className="scale-125 object-cover opacity-[0.15]"
           />
         </motion.div>
 
@@ -98,7 +103,7 @@ export function Hero() {
               priority
               sizes="100vw"
               quality={92}
-              className="object-cover contrast-[1.06] saturate-[0.92]"
+              className="object-cover"
             />
           </motion.div>
           <motion.div
@@ -125,13 +130,13 @@ export function Hero() {
           {/* Headline parts as the aperture opens, letting the photo through. */}
           <h1 className="pointer-events-none my-auto flex flex-col items-center justify-center text-center">
             <motion.span
-              className="font-display text-[clamp(2.5rem,8.2vw,6.4rem)] leading-[0.94] font-extrabold tracking-[-0.03em] text-chalk drop-shadow-[0_8px_28px_rgba(16,19,25,0.95)]"
+              className="font-display text-[clamp(2.5rem,8.2vw,6.4rem)] leading-[0.94] font-extrabold tracking-[-0.03em] text-chalk [text-shadow:0_6px_26px_rgba(16,19,25,0.95)]"
               style={{ x: still ? "-31%" : leftShift }}
             >
               Tyres fitted
             </motion.span>
             <motion.span
-              className="font-display text-[clamp(2.5rem,8.2vw,6.4rem)] leading-[0.94] font-extrabold tracking-[-0.03em] text-hazard drop-shadow-[0_8px_28px_rgba(16,19,25,0.95)]"
+              className="font-display text-[clamp(2.5rem,8.2vw,6.4rem)] leading-[0.94] font-extrabold tracking-[-0.03em] text-hazard [text-shadow:0_6px_26px_rgba(16,19,25,0.95)]"
               style={{ x: still ? "31%" : rightShift }}
             >
               while you wait
